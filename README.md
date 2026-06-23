@@ -1,0 +1,78 @@
+# CorpRecon-Go
+
+一个用 Go 语言编写的轻量、防封禁企业投资信息爬虫，专注于递归抓取 [风鸟网 (RiskBird)](https://www.riskbird.com) 的公开数据。
+
+## ✨ 核心特性 (Features)
+*   **混合架构 (Hybrid Mode)**: `chromedp` (无头浏览器) 负责静默自动登录并绕过人机验证，获取合法身份。支持通过 `Headless: false` 启用有头模式以便随时进行人工干预。
+*   **全维度 API 轰炸机**: 全面废弃脆弱的 HTML 解析，直接利用 `net/http` + `goroutine` 高并发调用底层 JSON 接口。支持抓取：**对外投资、商标、App、ICP备案、小程序** 5大核心维度！
+*   **SSR 逆向与防封禁机制**: 独家破解风鸟网基于 Nuxt 3 的 SSR `orderNo` 防抓取机制。内置**全局无锁限流器 (Global Rate Limiter)** 完美削平流量洪峰，并首创**人工接管宽限期**机制，一旦遇到滑块验证码，程序会暂停等待您手动验证，拒绝一刀切崩溃！
+*   **多维结构化导出**: 爬取结果不再揉成一团，而是自动落盘为清晰的多个 CSV 文件（如 `companies.csv`, `investments.csv`, `icps.csv` 等），自动追加当前时间戳，确保历史战绩互不覆盖。
+
+## 💡 工作原理与执行步骤 (Workflow & Architecture)
+
+本爬虫的工作流被精简为极其高效的三个核心阶段：
+
+1. **阶段一：身份授权 (Auth)**
+   - 唤醒无头浏览器 (Chrome) 访问登录页。
+   - 自动点击图文验证切换至“密码登录”，输入账号密码。
+   - 登录成功后提取真实的 `Cookies` 和 `User-Agent`，存入内存后销毁浏览器，释放资源。
+
+2. **阶段二：公司搜索与 ID 解析 (Search)**
+   - 调度引擎 (`Scheduler`) 读取队列中的**公司名称**（如：“北京抖音信息服务有限公司”）。
+   - 工作协程 (`Worker`) 携带全局 Cookie，向搜索接口 (`/riskbird-api/api/v1/companies/search`) 发起 POST 请求。
+   - 解析返回的 JSON 数据，获取目标公司的唯一内部标识符 `entid`。
+
+3. **阶段三：订单号提取与全维度抓取 (Investigate)**
+   - **SSR 逆向提取**：伪装完整 Headers 访问目标公司 HTML，利用正则在 `__NUXT_DATA__` 中提取服务器动态签发的内部通讯密钥 `orderNo`。
+   - **并发拉取多维度数据**：获取密钥后，兵分五路（并发 Goroutines）向后端的投资、商标、App、ICP、小程序 5个不同接口发送请求。
+   - **自动分页与深度遍历**：解析 JSON 并根据返回的 `totalCount` **自动计算页数并循环翻页请求**。同时，将新发现的对外投资公司重新推入调度队列（深度 +1），实现无限级递归挖掘。
+
+4. **阶段四：持久化导出 (Export)**
+   - 程序执行完毕或被中断时，将内存中收集到的所有结构化企业资产清单（含子孙节点），自动扁平化合并并输出到 `report.csv`。
+
+## 🚀 快速上手 (Quick Start)
+
+### 1. 安装与准备
+```bash
+git clone https://github.com/sienchen/CorpRecon-Go.git
+cd CorpRecon-Go
+go mod tidy
+```
+
+### 2. 配置账号与种子
+打开 `cmd/corprecon/main.go`，填入您的真实登录账号，并设置初始种子：
+```go
+authCfg := auth.BrowserConfig{
+    Username: "YOUR_USERNAME",
+    Password: "YOUR_PASSWORD",
+}
+
+// 设置初始爬取公司
+seeds := []string{
+    "北京抖音信息服务有限公司",
+}
+
+// 参数分别为: HTTP客户端, 最大深度(如10), 并发Worker数(如3)
+engine := scheduler.NewEngine(client, 10, 3) 
+```
+
+### 3. 运行爬虫
+```bash
+go run cmd/corprecon/main.go
+```
+您将会在控制台看到层次分明、排版整洁的公司股权链深挖过程。
+
+## 🤝 参与贡献 (Contributing)
+本项目遵循“大道至简”的设计理念，代码极其模块化 (`auth` -> `fetcher` -> `parser` -> `scheduler`)。
+如果您想加入我们，可以从以下几个方面入手：
+1.  增加对接 MySQL/SQLite/Neo4j 图数据库等持久化存储方案。
+2.  增加代理 IP 池 (Proxy Pool) 策略以应对更极端的风控。
+3.  扩展更多维度的 API 解析（如：司法风险、高管信息等）。
+
+欢迎提交 PR 或在 Issue 中讨论！
+
+## ⚠️ 免责声明 (Disclaimer)
+本项目仅供编程技术交流、学习以及个人研究使用。程序抓取的数据均来源于公开互联网。
+请使用者严格遵守中国相关法律法规以及目标网站的 `robots.txt` 协议与服务条款。
+**严禁**将本程序用于任何非法用途、商业牟利、或进行恶意高频攻击、窃取非公开数据等破坏性行为。
+因使用者滥用本程序所产生的一切法律责任及纠纷，均由使用者本人承担，与项目作者无关。下载、使用本程序即代表您同意本免责声明。
