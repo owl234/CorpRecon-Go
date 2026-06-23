@@ -40,25 +40,28 @@ go mod tidy
 ```
 
 ### 2. 配置账号与种子
-打开 `cmd/corprecon/main.go`，填入您的真实登录账号，并设置初始种子：
+打开 `corprecon/main.go`，填入您的真实登录账号，并设置初始种子：
 ```go
-authCfg := auth.BrowserConfig{
-    Username: "YOUR_USERNAME",
-    Password: "YOUR_PASSWORD",
-}
+	authCfg := auth.BrowserConfig{
+		LoginURL: "https://www.riskbird.com",
+		Username: "YOUR_PHONE_NUMBER",        // 请填入您的真实账号
+		Password: "YOUR_PASSWORD",            // 请填入您的真实密码
+		Timeout:  60 * time.Second,
+		Headless: false, // 强烈建议测试时设为 false，以防出现验证码需要手动滑
+	}
 
-// 设置初始爬取公司
-seeds := []string{
-    "北京抖音信息服务有限公司",
-}
+	// 设置初始爬取公司（选用体量较小的公司作为测试种子）
+	seeds := []string{
+		"竞技世界（成都）网络技术有限公司",
+	}
 
-// 参数分别为: HTTP客户端, 最大深度(如10), 并发Worker数(如3)
-engine := scheduler.NewEngine(client, 10, 3) 
+	// 参数分别为: HTTP客户端, 最大深度(如1), 并发Worker数(如2)
+	engine := scheduler.NewEngine(client, 1, 2) 
 ```
 
 ### 3. 运行爬虫
 ```bash
-go run cmd/corprecon/main.go
+go run corprecon/main.go
 ```
 您将会在控制台看到层次分明、排版整洁的公司股权链深挖过程。
 

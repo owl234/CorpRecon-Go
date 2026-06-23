@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-corprecon
-main
+/corprecon_binary
+/main
 
 # Output and logs
 output/
