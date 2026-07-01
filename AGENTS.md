@@ -27,3 +27,7 @@
 1. **绝对速率限制 (Global Rate Limiting)**：所有对风鸟网发出的 HTTP 抓取请求，必须统一经过 `internal/fetcher/client.go` 中的全局无锁限流器 (`randomSleep()`) 控制。**严禁**任何绕过限流器发起的裸并发请求，否则会瞬间触发 IP 封禁。
 2. **人工干预优先 (Human-in-the-loop fallback)**：当页面正则匹配不到 `orderNo` 等核心加密参数时，**禁止直接抛错崩溃**。必须通过循环重试（预留约 60 秒宽限期），并引导用户在 `Headless: false` 的浏览器窗口中手动消除人机验证（滑块等），实现“遇阻悬停，人工排雷，自动续爬”。
 3. **冗余请求最小化**：对于具有相同 `orderNo` 通讯密钥的子维度（如投资、商标、App 等），必须复用母页面的 `orderNo`。**严禁**为每个子维度单独去拉取一次主页来获取密钥。
+
+## Artifacts 语言规范 (Artifacts Language Rule)
+
+*   **强制中文**: 所有生成的 Artifacts（如 implementation_plan.md, task.md, walkthrough.md 以及任何图表、表格或文档）必须使用**纯中文**生成。严禁在输出给用户的说明性文本或方案中混杂非必要的英文（专有名词、代码字段除外）。

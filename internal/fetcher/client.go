@@ -36,8 +36,8 @@ func NewClient(session *auth.SessionData) *Client {
 		},
 		session:     session,
 		MaxRetries:  3,
-		MinDelay:    500 * time.Millisecond,
-		MaxDelay:    2000 * time.Millisecond,
+		MinDelay:    2000 * time.Millisecond,
+		MaxDelay:    4000 * time.Millisecond,
 		lastReqTime: time.Now(),
 	}
 }
@@ -81,6 +81,10 @@ func (c *Client) DoRequest(req *http.Request) ([]byte, error) {
 	var lastErr error
 	for i := 0; i < c.MaxRetries; i++ {
 		c.randomSleep() // 请求前随机休眠
+
+		if req.GetBody != nil {
+			req.Body, _ = req.GetBody()
+		}
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
@@ -126,7 +130,7 @@ func (c *Client) Get(url string) ([]byte, error) {
 
 // PostJSON 发起携带自定义 Header 的 POST 请求
 func (c *Client) PostJSON(url string, body []byte, headers map[string]string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
